@@ -282,7 +282,15 @@ export function Dropdown({ options, onSelect }: { options: string[]; onSelect: (
   };
 
   return (
-    <div role="combobox" aria-expanded={isOpen} aria-haspopup="listbox" aria-controls={listId} tabIndex={0} onKeyDown={handleKeyDown} onClick={() => setIsOpen(prev => !prev)}>
+    <div
+      role="combobox"
+      aria-expanded={isOpen}
+      aria-haspopup="listbox"
+      aria-controls={listId}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onClick={() => setIsOpen(prev => !prev)}
+    >
       <span>{options[activeIndex]}</span>
       {isOpen && (
         <ul id={listId} role="listbox">
@@ -427,7 +435,7 @@ Before submitting any interactive component for review:
 - [ ] No `onClick` on `<div>` or `<span>` without `role`, `tabIndex`, and `onKeyDown`
 - [ ] Icon-only buttons have `aria-label`
 - [ ] Decorative images use `alt=""` and `aria-hidden="true"`
-- [ ] Modals trap focus and restore it on close
+- [ ] Modals restore focus on close (for full focus trapping with Tab/Shift+Tab cycling, use a library like `focus-trap-react`)
 - [ ] Dynamic content updates use `aria-live`
 - [ ] `prefers-reduced-motion` is respected for animations
 
