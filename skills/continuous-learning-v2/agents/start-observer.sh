@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Continuous Learning v2 - Observer Agent Launcher
 #
 # Starts the background observer agent that analyzes observations
@@ -37,7 +37,7 @@ PYTHON_CMD="${CLV2_PYTHON_CMD:-}"
 
 # shellcheck disable=SC1091
 . "${SKILL_ROOT}/scripts/lib/homunculus-dir.sh"
-CONFIG_DIR="$(_ecc_resolve_homunculus_dir)"
+CONFIG_DIR="$(_clv2_resolve_homunculus_dir)"
 if [ -n "${CLV2_CONFIG:-}" ]; then
   CONFIG_FILE="$CLV2_CONFIG"
 elif [ -f "${CONFIG_DIR}/config.json" ]; then
@@ -215,8 +215,13 @@ case "$ACTION" in
       CLV2_OBSERVER_PROMPT_PATTERN="$CLV2_OBSERVER_PROMPT_PATTERN" \
       "$OBSERVER_LOOP_SCRIPT" >> "$LOG_FILE" 2>&1 &
 
-    # Wait for PID file
-    sleep 2
+    # Wait for the PID file to appear (poll up to ~10s; exits early once ready).
+    # A fixed sleep is either too short on loaded/slow filesystems or wastes
+    # time on healthy ones.
+    for _i in $(seq 1 50); do
+      [ -f "$PID_FILE" ] && break
+      sleep 0.2
+    done
 
     # Check for confirmation-seeking output in the observer log
     if tail -n +"$((start_line + 1))" "$LOG_FILE" 2>/dev/null | grep -E -i -q "$CLV2_OBSERVER_PROMPT_PATTERN"; then

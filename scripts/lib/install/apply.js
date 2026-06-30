@@ -5,6 +5,29 @@ const path = require('path');
 
 const { writeInstallState } = require('../install-state');
 const { filterMcpConfig, parseDisabledMcpServers } = require('../mcp-config');
+const { rewriteNamespaceLinks } = require('./rewrite-namespace-links');
+
+const CLAUDE_ECC_NAMESPACE = 'ecc';
+
+// Claude home/project installs inject `skills/ecc/` and `rules/ecc/`. Markdown
+// copied under those namespaced roots may carry source-relative links to a
+// sibling top-level dir that break post-install; rewrite them on copy.
+function getNamespaceLinkRewrite(plan, destinationPath) {
+  if (!plan.adapter || (plan.adapter.target !== 'claude' && plan.adapter.target !== 'claude-project')) {
+    return null;
+  }
+  if (!plan.targetRoot || !destinationPath.toLowerCase().endsWith('.md')) {
+    return null;
+  }
+  const namespacedRoots = [
+    path.join(plan.targetRoot, 'skills', CLAUDE_ECC_NAMESPACE) + path.sep,
+    path.join(plan.targetRoot, 'rules', CLAUDE_ECC_NAMESPACE) + path.sep,
+  ];
+  if (!namespacedRoots.some(root => destinationPath.startsWith(root))) {
+    return null;
+  }
+  return CLAUDE_ECC_NAMESPACE;
+}
 
 function readJsonObject(filePath, label) {
   let parsed;
@@ -146,6 +169,16 @@ function applyInstallPlan(plan) {
       const sourceConfig = readJsonObject(operation.sourcePath, 'MCP config');
       const filteredConfig = filterMcpConfig(sourceConfig, disabledServers).config;
       fs.writeFileSync(operation.destinationPath, formatJson(filteredConfig), 'utf8');
+      continue;
+    }
+
+    const namespace = operation.kind === 'copy-file'
+      ? getNamespaceLinkRewrite(plan, operation.destinationPath)
+      : null;
+    if (namespace) {
+      const original = fs.readFileSync(operation.sourcePath, 'utf8');
+      const rewritten = rewriteNamespaceLinks(original, namespace);
+      fs.writeFileSync(operation.destinationPath, rewritten, 'utf8');
       continue;
     }
 
