@@ -100,32 +100,27 @@ function resolveEccRoot(options = {}) {
 }
 
 /**
- * Compact inline version for embedding in command .md code blocks.
+ * Compact inline locator for embedding in hooks.json and command .md code blocks.
  *
- * This is the minified form of resolveEccRoot() suitable for use in
- * node -e "..." scripts where require() is not available before the
- * root is known.
+ * Earlier revisions inlined the *entire* resolveEccRoot() search (~700 chars,
+ * duplicated ~80×). That blob used a spread (`...s`) over nested array literals,
+ * which broke Windows hook execution due to shell quoting (#2368).
+ *
+ * This minified form instead does the minimum needed to locate and load the
+ * committed resolve-ecc-root module, then delegates the real search to
+ * resolveEccRoot(). It contains no spread, no nested array literals, and no
+ * escaped double quotes, so it survives `node -e "..."` quoting on every shell.
+ *
+ * It loads the module from CLAUDE_PLUGIN_ROOT (set by Claude Code for plugin
+ * hooks and commands) or, when unset, from ~/.claude (the direct-install
+ * location). resolveEccRoot() then resolves the true root — including the
+ * marketplace/plugin-cache locations — from there.
  *
  * Usage in commands:
  *   const _r = <paste INLINE_RESOLVE>;
  *   const sm = require(_r + '/scripts/lib/session-manager');
  */
-function inlineSingleQuote(value) {
-  return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-}
-
-function inlineArray(values) {
-  return `[${values.map(inlineSingleQuote).join(',')}]`;
-}
-
-function inlineNestedArray(values) {
-  return `[${values.map(inlineArray).join(',')}]`;
-}
-
-const INLINE_PLUGIN_ROOT_SEGMENTS = inlineNestedArray(PLUGIN_ROOT_SEGMENTS);
-const INLINE_PLUGIN_CACHE_SLUGS = inlineArray(PLUGIN_CACHE_SLUGS);
-
-const INLINE_RESOLVE = `(()=>{var e=process.env.CLAUDE_PLUGIN_ROOT;if(e&&e.trim())return e.trim();var p=require('path'),f=require('fs'),h=require('os').homedir(),d=p.join(h,'.claude'),q=p.join('scripts','lib','utils.js');if(f.existsSync(p.join(d,q)))return d;for(var s of ${INLINE_PLUGIN_ROOT_SEGMENTS}){var l=p.join(d,'plugins',...s);if(f.existsSync(p.join(l,q)))return l}try{for(var g of ${INLINE_PLUGIN_CACHE_SLUGS}){var b=p.join(d,'plugins','cache',g);for(var o of f.readdirSync(b,{withFileTypes:true})){if(!o.isDirectory())continue;for(var v of f.readdirSync(p.join(b,o.name),{withFileTypes:true})){if(!v.isDirectory())continue;var c=p.join(b,o.name,v.name);if(f.existsSync(p.join(c,q)))return c}}}}catch(x){}return d})()`;
+const INLINE_RESOLVE = `(function(){var p=require('path'),o=require('os');var e=process.env.CLAUDE_PLUGIN_ROOT;var b=(e&&e.trim())?e.trim():p.join(o.homedir(),'.claude');try{return require(p.join(b,'scripts','lib','resolve-ecc-root')).resolveEccRoot()}catch(x){return b}})()`;
 
 module.exports = {
   resolveEccRoot,
