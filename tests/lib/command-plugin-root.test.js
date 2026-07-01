@@ -31,12 +31,12 @@ test('sessions command uses shared inline resolver in all node scripts', () => {
 });
 
 test('skill-health command uses shared inline resolver in all shell snippets', () => {
-  assert.strictEqual((skillHealthDoc.match(/var r=/g) || []).length, 3);
+  assert.strictEqual((skillHealthDoc.match(/var r=\(function/g) || []).length, 3);
   assert.strictEqual((skillHealthDoc.match(/scripts','lib','resolve-ecc-root/g) || []).length, 3);
 });
 
 test('instinct-status command uses shared inline resolver (no stale legacy fallback) (#2037)', () => {
-  assert.strictEqual((instinctStatusDoc.match(/var r=/g) || []).length, 1);
+  assert.strictEqual((instinctStatusDoc.match(/var r=\(function/g) || []).length, 1);
   assert.strictEqual((instinctStatusDoc.match(/scripts','lib','resolve-ecc-root/g) || []).length, 1);
   // The pre-fix template hard-coded the legacy path as a fallback when
   // CLAUDE_PLUGIN_ROOT was unset. Asserting its absence prevents regression.

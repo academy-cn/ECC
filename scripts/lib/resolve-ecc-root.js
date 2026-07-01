@@ -106,21 +106,21 @@ function resolveEccRoot(options = {}) {
  * duplicated ~80×). That blob used a spread (`...s`) over nested array literals,
  * which broke Windows hook execution due to shell quoting (#2368).
  *
- * This minified form instead does the minimum needed to locate and load the
- * committed resolve-ecc-root module, then delegates the real search to
- * resolveEccRoot(). It contains no spread, no nested array literals, and no
+ * This minified form contains no spread, no nested array literals, and no
  * escaped double quotes, so it survives `node -e "..."` quoting on every shell.
- *
- * It loads the module from CLAUDE_PLUGIN_ROOT (set by Claude Code for plugin
- * hooks and commands) or, when unset, from ~/.claude (the direct-install
- * location). resolveEccRoot() then resolves the true root — including the
- * marketplace/plugin-cache locations — from there.
+ * When CLAUDE_PLUGIN_ROOT is set (as Claude Code does for plugin hooks and
+ * commands) it is used directly. Otherwise the inline probes the same set of
+ * locations resolveEccRoot() knows about — ~/.claude, the exact plugin roots
+ * under ~/.claude/plugins/, and the versioned plugin cache — only far enough to
+ * load the committed resolve-ecc-root module, then delegates the authoritative
+ * decision to resolveEccRoot(). This keeps discovery behaviour identical to the
+ * old inline while centralising the real logic in one tested module.
  *
  * Usage in commands:
  *   const _r = <paste INLINE_RESOLVE>;
  *   const sm = require(_r + '/scripts/lib/session-manager');
  */
-const INLINE_RESOLVE = `(function(){var p=require('path'),o=require('os');var e=process.env.CLAUDE_PLUGIN_ROOT;var b=(e&&e.trim())?e.trim():p.join(o.homedir(),'.claude');try{return require(p.join(b,'scripts','lib','resolve-ecc-root')).resolveEccRoot()}catch(x){return b}})()`;
+const INLINE_RESOLVE = `(function(){var p=require('path'),f=require('fs'),o=require('os');var e=process.env.CLAUDE_PLUGIN_ROOT;if(e&&e.trim())return e.trim();var d=p.join(o.homedir(),'.claude');function L(x){try{return require(p.join(x,'scripts','lib','resolve-ecc-root')).resolveEccRoot()}catch(_){return null}}var r=L(d);if(r)return r;var s=['ecc','ecc@ecc','marketplaces/ecc','everything-claude-code','everything-claude-code@everything-claude-code','marketplaces/everything-claude-code'];for(var i=0;i<s.length;i++){r=L(p.join(d,'plugins',s[i]));if(r)return r}try{var g=['ecc','everything-claude-code'];for(var j=0;j<g.length;j++){var c=p.join(d,'plugins','cache',g[j]);var O=f.readdirSync(c);for(var k=0;k<O.length;k++){var q=p.join(c,O[k]);var V=f.readdirSync(q);for(var m=0;m<V.length;m++){r=L(p.join(q,V[m]));if(r)return r}}}}catch(_){}return d})()`;
 
 module.exports = {
   resolveEccRoot,

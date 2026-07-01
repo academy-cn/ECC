@@ -345,6 +345,47 @@ module.exports = { resolveEccRoot() { assert.strictEqual(process.env.HOME, ${JSO
     }
   })) passed++; else failed++;
 
+  if (test('INLINE_RESOLVE bootstraps module from an exact plugin root when env unset', () => {
+    const homeDir = createTempDir();
+    try {
+      const resolverDir = path.join(homeDir, '.claude', 'plugins', 'ecc', 'scripts', 'lib');
+      fs.mkdirSync(resolverDir, { recursive: true });
+      fs.writeFileSync(path.join(resolverDir, 'resolve-ecc-root.js'), `module.exports = { resolveEccRoot() { return 'plugin-root'; } };`);
+      const { execFileSync } = require('child_process');
+      const result = execFileSync('node', [
+        '-e', `console.log(${INLINE_RESOLVE})`,
+      ], {
+        env: { PATH: process.env.PATH, HOME: homeDir, USERPROFILE: homeDir },
+        encoding: 'utf8',
+      }).trim();
+      assert.strictEqual(result, 'plugin-root');
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (test('INLINE_RESOLVE bootstraps module from the versioned plugin cache when env unset', () => {
+    const homeDir = createTempDir();
+    try {
+      const resolverDir = path.join(
+        homeDir, '.claude', 'plugins', 'cache', 'ecc', 'affaan-m', CURRENT_PACKAGE_VERSION,
+        'scripts', 'lib'
+      );
+      fs.mkdirSync(resolverDir, { recursive: true });
+      fs.writeFileSync(path.join(resolverDir, 'resolve-ecc-root.js'), `module.exports = { resolveEccRoot() { return 'cache-root'; } };`);
+      const { execFileSync } = require('child_process');
+      const result = execFileSync('node', [
+        '-e', `console.log(${INLINE_RESOLVE})`,
+      ], {
+        env: { PATH: process.env.PATH, HOME: homeDir, USERPROFILE: homeDir },
+        encoding: 'utf8',
+      }).trim();
+      assert.strictEqual(result, 'cache-root');
+    } finally {
+      fs.rmSync(homeDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (test('INLINE_RESOLVE falls back to ~/.claude/ when nothing found', () => {
     const homeDir = createTempDir();
     try {
